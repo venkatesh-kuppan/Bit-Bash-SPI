@@ -1,0 +1,147 @@
+#include <stdint.h>
+#include "dependencies.h"
+#include "SW_SPI.h"
+
+/* Populate clk delays of spi master instance(in microseconds) */
+void SW_SPI_MasterInit(SW_SPI_t *pSPI)
+{
+	float temp;
+	temp = (((float)1000000)/pSPI->sclkFreq);
+	pSPI->clkL_us = pSPI->clkH_us = (temp/2);
+}
+
+void SW_SPI_Sel(SW_SPI_t *pSPI)
+{
+	gpio_low(&pSPI->ssel);
+}
+
+void SW_SPI_Desel(SW_SPI_t *pSPI)
+{
+	gpio_high(&pSPI->ssel);
+}
+
+void SW_SPI_MasterTfr(SW_SPI_t *pSPI, SPI_data_t *pSPIData)
+{
+	uint32_t i; uint8_t bit;
+	  
+	/* Number of SCLK cycles needed */
+	uint32_t numCycles = numSPIBytes;
+	uint8_t byteIn = 0, byteOut = 0xFF;
+	uint8_t cpol = pSPI->cpol;
+	uint8_t cpha = pSPI->cpha;
+	
+	/* SSEL should be LOW before this by a call to SW_SPI_Select */
+	/* Start SPI master bit bash */
+	
+	IRQ_disable();
+	
+	for (i=0; i<numCycles; i++) {
+				
+		byteOut = pSPIData->dout[i];
+			
+		if (pSPI->msbFirst == true) {
+			for (bit = 0x80; (bit != 0); bit >>= 1) {
+						
+				if (cpol == 1)
+					gpio_low(&pSPI->sclk);
+				else
+					gpio_high(&pSPI->sclk);
+							
+				if (cpha == 1) {
+					if (byteOut & bit) 
+						gpio_high(&pSPI->mosi);
+					else 
+						gpio_low(&pSPI->mosi);
+				}
+				else {
+					if (is_gpio_high(&pSPI->miso))
+						byteIn |= bit;
+				}
+									
+				/* Pull clock HIGH or LOW now */
+				if (cpol == 1) {
+					uDelay(pSPI->clkL_us);
+					gpio_high(&pSPI->sclk);
+				}
+				else {
+					uDelay(pSPI->clkL_us);
+					gpio_low(&pSPI->sclk);
+				}		
+							
+				if (cpha == 1) {
+					if (is_gpio_high(&pSPI->miso)
+						byteIn |= bit;
+				}
+				else {
+					if (byteOut & bit) 
+						gpio_high(&pSPI->mosi);
+					else 
+						gpio_low(&pSPI->mosi);
+				}
+							
+				if (cpol == 1)
+					uDelay(pSPI->clkH_us);
+				else
+					uDelay(pSPI->clkH_us);
+							
+			}
+
+		}
+		else {
+			for (bit = 0x01; (bit <= 0x80); bit <<= 1) {
+				
+				if (cpol == 1)
+					gpio_low(&pSPI->sclk);
+				else
+					gpio_high(&pSPI->sclk);
+							
+				if (cpha == 1) {
+					if (byteOut & bit) 
+						gpio_high(&pSPI->mosi);
+					else 
+						gpio_low(&pSPI->mosi);
+				}
+				else {
+					if (is_gpio_high(&pSPI->miso))
+						byteIn |= bit;
+				}
+									
+				/* Pull clock HIGH or LOW now */
+				if (cpol == 1) {
+					uDelay(pSPI->clkL_us);
+					gpio_high(&pSPI->sclk);
+				}
+				else {
+					uDelay(pSPI->clkL_us);
+					gpio_low(&pSPI->sclk);
+				}		
+							
+				if (cpha == 1) {
+					if (is_gpio_high(&pSPI->miso))
+						byteIn |= bit;
+				}
+				else {
+					if (byteOut & bit) 
+						gpio_high(&pSPI->mosi);
+					else 
+						gpio_low(&pSPI->mosi);
+				}
+							
+				if (cpol == 1)
+					uDelay(pSPI->clkH_us);
+				else
+					uDelay(pSPI->clkH_us);
+		}
+				
+		pSPIData->din[i] = byteIn;
+						
+		byteIn = 0;
+	}
+
+	/* Pull MOSI high when not in use */
+	gpio_high(&pSPI->mosi_pin);
+	
+	IRQ_enable();
+	/* Stop SPI master bit bash */
+	/* SSEL should be pulled HIGH after this by a call to SW_SPI_DeSelect */
+}
