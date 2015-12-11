@@ -1,0 +1,82 @@
+Simple C code to implement a bit bashed SPI interface using GPIO's.
+
+Supports all SPI modes.
+Allows selection SPI clock frequency.
+Select can be controlled.
+Simple to use.
+Functions in dependencies.h has to be defined.
+Will work for all platforms
+
+Create instance of type SW_SPI_t and populate all fields except clkH_us
+and clkL_us.
+
+SW_SPI_t spi;
+
+Select 4 uC pins to be used for MOSI, MISO, SCLK and SSEL.
+Assign them to PIN_t types.
+If I am using Port1Pin20 for SCLK then
+
+SW_SPI_t spi;
+spi.sclk = {1, 20};
+Similarly assign spi.mosi, spi.miso, spi.ssel.
+
+Depending on which SPI mode, assign spi.cpol(0 or 1) and spi.cpha (0 or 1)
+For spi mode 0, spi.cpol=0; spi.cpha=0;
+
+Assign spi.sclkFreq which is SPI sclk frequency you wish. Depending on rise
+and fall time of uC pin and accuracy of uDelay timer, frequency won't be exact.
+
+Assign spi.msbFirst=true, if the device reponds in Big endian format, false if
+in LE format.
+
+Call SW_SPI_MasterInit(&spi);
+
+Now to do any SPI transaction Use SSEL pins and SW_SPI_MasterTfr;
+
+For e.g.
+SPI_data_t data;
+uint8_t in[16];
+uint8_t out[16]
+
+/* So If I want to transfer 4 bytes to a device */
+
+data.dout = out; /* Populate with what you want to send */
+data.din  = in;
+data.numSPIBytes = 4;
+
+SW_SPI_Sel(&spi);
+SW_SPI_MasterTfr(&spi, &data);
+SW_SPI_Desel(&spi);
+
+'in' will contain data received. SPI is bidirectional. When you write a byte, you
+receive a byte. When you read a byte, you are also sending a byte. If you are
+working with devices where you write a byte and expect a response, you will have 
+junk data in first byte of out array and expected data will start from out[1]. 
+For e.g. in many SPI flash devices, to read a memory location, first byte is read
+command, next 3 bytes will are location address to be read(24 bit address). 
+So value your are interested in will start at out[4]. First 4 bytes of out should
+be discarded. Similarly while reading 4 bytes out[4] to out[7], make sure
+in[4] to in[7] are 0 or 0XFF.
+
+Make sure din and dout point to memory of atleast  'numSPIBytes' bytes.
+
+
+Code should work for all uC platforms if functions in dependencies.h are defined.
+
+/* Define low level mcu code to make pin low */
+static void gpio_low(PIN_t *pin);
+
+/* Define low level mcu code to make pin high */
+static void gpio_high(PIN_t *pin);
+
+/* Define low level mcu code to check if pin high. Return true if high else false */
+static bool is_gpio_high(PIN_t *pin);
+
+/* Define low level mcu code to implement delay in microseconds */
+static void uDelay(uint32 delay_us);
+
+/* Define low level mcu code to disable interrupts */
+static void IRQ_disable();
+
+/* Define low level mcu code to enable interrupts which were disabled by prev function */
+static void IRQ_enable();
