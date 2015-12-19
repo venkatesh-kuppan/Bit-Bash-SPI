@@ -14,7 +14,7 @@ SW_SPI_t spi;
 
 Select 4 uC pins to be used for MOSI, MISO, SCLK and SSEL.
 Assign them to PIN_t types.
-If I am using Port1Pin20 for SCLK then
+To use Port1Pin20 for SCLK,
 
 SW_SPI_t spi;
 spi.sclk = {1, 20};
@@ -23,7 +23,7 @@ Similarly assign spi.mosi, spi.miso, spi.ssel.
 Depending on which SPI mode, assign spi.cpol(0 or 1) and spi.cpha (0 or 1)
 For spi mode 0, spi.cpol=0; spi.cpha=0;
 
-Assign spi.sclkFreq which is SPI sclk frequency you wish. Depending on rise
+Assign spi.sclkFreq which is SPI sclk frequency. Depending on rise
 and fall time of uC pin and accuracy of uDelay timer, frequency won't be exact.
 
 Assign spi.msbFirst=true, if the device reponds in Big endian format, false if
@@ -38,7 +38,7 @@ SPI_data_t data;
 uint8_t in[16];
 uint8_t out[16]
 
-/* So If I want to transfer 4 bytes to a device */
+/* So to transfer 4 bytes to a device */
 
 data.dout = out; /* Populate with what you want to send */
 data.din  = in;
